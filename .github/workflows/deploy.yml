@@ -32,7 +32,7 @@ jobs:
           cache-dependency-path: ./package.json
 
       - name: Install dependencies (Express app)
-        run: npm ci
+        run: npm install
 
       - name: Run tests (Express app)
         run: npm test || echo "⚠️ No tests configured for Express app."
@@ -45,7 +45,7 @@ jobs:
           cache-dependency-path: ./functions/email-processor/package-lock.json
 
       - name: Install dependencies (Cloud Function)
-        run: npm ci
+        run: npm install
         working-directory: ./functions/email-processor
 
       - name: Run tests (Cloud Function)
