@@ -70,7 +70,6 @@ jspm_packages/
 # Google Cloud credentials
 *.json
 !package*.json
-!tsconfig.json
 key.json
 service-account-key.json
 
