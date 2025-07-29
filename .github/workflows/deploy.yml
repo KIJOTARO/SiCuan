@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: '20' # Ensure this matches your app's Node.js version
           cache: 'npm'
-          cache-dependency-path: src/package-lock.json # Specific cache path for main app
+          cache-dependency-path: package-lock.json # Specific cache path for main app
 
       - name: Install dependencies (main app)
         run: npm install # Or `yarn install`, `pnpm install`
