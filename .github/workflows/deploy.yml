@@ -15,7 +15,7 @@ env:
   TOPIC_NAME: email-notifications
   FUNCTION_NAME: processEmailQueue
   SERVICE_NAME: sicuan-api
-  GCR_IMAGE_NAME: gcr.io/${{ vars.PROJECT_ID }}/${{ vars.SERVICE_NAME }} # Define image name once
+  GCR_IMAGE_NAME: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }} # Define image name once
 
 jobs:
   # --- AUTOMATED TESTING JOB (CI) ---
@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: '20' # Ensure this matches your app's Node.js version
           cache: 'npm'
-          cache-dependency-path: package-lock.json # Specific cache path for main app
+          cache-dependency-path: package.json # Specific cache path for main app
 
       - name: Install dependencies (main app)
         run: npm install # Or `yarn install`, `pnpm install`
