@@ -46,7 +46,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy .env.production jika ada
-COPY .env.production* ./
+#COPY .env.production* ./
 
 # Change ownership dan permissions
 RUN chown -R sicuan:nodejs /app && chmod -R 755 /app
@@ -61,4 +61,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD bun --eval "fetch('http://localhost:8080/health').then(r => process.exit(r.ok ? 0 : 1))" || exit 1
 
 # Jalankan aplikasi
+
 CMD ["bun", "run", "dist/server.js"]
