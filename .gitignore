@@ -70,6 +70,7 @@ jspm_packages/
 # Google Cloud credentials
 *.json
 !package*.json
+!tsconfig*.json
 key.json
 service-account-key.json
 
@@ -96,3 +97,4 @@ prisma/migrations/
 # Cloud Function artifacts
 functions/*/node_modules/
 functions/*/.env
+
