@@ -104,7 +104,6 @@ jobs:
             
 
       - name: Build and Push Docker Image to GCR
-        working-directory: ../..
         run: |
           gcloud builds submit --tag ${{ env.GCR_IMAGE_NAME }} .
 
