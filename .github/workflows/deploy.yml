@@ -17,21 +17,25 @@ env:
   GCR_IMAGE_NAME: gcr.io/sicuan-boyz4/sicuan-api
 
 jobs:
-  # ✅ CONTINUOUS INTEGRATION
+  # ✅ CONTINUOUS INTEGRATION (TESTING)
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js (Backend)
+      - name: Set up Node.js (for Express backend)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: ./package.json
 
-      - run: npm install
-      - run: npm test || echo "⚠ No tests configured for Express app."
+      - name: Install dependencies (Express app)
+        run: npm install
+
+      - name: Run tests (Express app)
+        run: npm test || echo "⚠ No tests configured for Express app."
 
       - name: Set up Node.js (Cloud Function)
         uses: actions/setup-node@v4
@@ -40,10 +44,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./functions/email-processor/package-lock.json
 
-      - run: npm install
+      - name: Install dependencies (Cloud Function)
+        run: npm install
         working-directory: ./functions/email-processor
 
-      - run: npm test || echo "⚠ No tests configured for Cloud Function."
+      - name: Run tests (Cloud Function)
+        run: npm test || echo "⚠ No tests configured for Cloud Function."
         working-directory: ./functions/email-processor
 
   # ✅ CONTINUOUS DEPLOYMENT
@@ -55,7 +61,8 @@ jobs:
       id-token: 'write'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
@@ -63,14 +70,8 @@ jobs:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
           project_id: ${{ env.PROJECT_ID }}
 
-      - name: Validate environment variables
-        run: |
-          if [ -z "${{ secrets.MAILJET_API_KEY }}" ] || [ -z "${{ secrets.MAILJET_SECRET_KEY }}" ] || [ -z "${{ secrets.MAILJET_SENDER }}" ]; then
-            echo "❌ MAILJET credentials are missing!"
-            exit 1
-          fi
-
-      - run: gcloud config set project ${{ env.PROJECT_ID }}
+      - name: Set Google Cloud project config
+        run: gcloud config set project ${{ env.PROJECT_ID }}
 
       - name: Enable required GCP APIs
         run: |
@@ -82,42 +83,28 @@ jobs:
       - name: Create Pub/Sub topic if not exists
         run: |
           if ! gcloud pubsub topics describe ${{ env.TOPIC_NAME }} > /dev/null 2>&1; then
+            echo "Creating topic ${{ env.TOPIC_NAME }}..."
             gcloud pubsub topics create ${{ env.TOPIC_NAME }}
-          fi
-
-      - name: Cancel any pending Cloud Function operations
-        run: |
-          PENDING_OPS=$(gcloud functions operations list \
-            --region=${{ env.REGION }} \
-            --filter="metadata.target=${{ env.FUNCTION_NAME }} AND done=false" \
-            --format="value(name)")
-          if [ ! -z "$PENDING_OPS" ]; then
-            echo "⚠ Found pending operations. Canceling..."
-            for OP in $PENDING_OPS; do
-              gcloud functions operations cancel "$OP" --region=${{ env.REGION }}
-            done
           else
-            echo "✅ No pending operations found."
+            echo "Topic ${{ env.TOPIC_NAME }} already exists."
           fi
 
-      - name: Deploy Cloud Function (with retry)
+      - name: Deploy Cloud Function
+        working-directory: ./functions/email-processor
         run: |
-          for i in {1..3}; do
-            gcloud functions deploy ${{ env.FUNCTION_NAME }} \
-              --runtime nodejs20 \
-              --trigger-topic ${{ env.TOPIC_NAME }} \
-              --source functions/email-processor \
-              --entry-point processEmailQueue \
-              --region ${{ env.REGION }} \
-              --memory 1GB \
-              --timeout 60s \
-              --set-env-vars MAILJET_API_KEY=${{ secrets.MAILJET_API_KEY }},MAILJET_SECRET_KEY=${{ secrets.MAILJET_SECRET_KEY }},MAILJET_SENDER=${{ secrets.MAILJET_SENDER }} && break || {
-              echo "⚠ Retry in 15 seconds..."
-              sleep 15
-            }
-          done
+          gcloud functions deploy ${{ env.FUNCTION_NAME }} \
+            --runtime nodejs20 \
+            --trigger-topic $TOPIC_NAME \
+            --source . \
+            --entry-point processEmailQueue \
+            --set-env-vars MAILJET_API_KEY=${{ secrets.MAILJET_API_KEY }},MAILJET_SECRET_KEY=${{ secrets.MAILJET_SECRET_KEY }},MAILJET_SENDER=${{ secrets.MAILJET_SENDER }} \
+            --region $REGION \
+            --memory 1GB \
+            --timeout 60s
+            
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Docker Image to GCR
+        working-directory: ../..
         run: |
           gcloud builds submit --tag ${{ env.GCR_IMAGE_NAME }} .
 
@@ -145,6 +132,3 @@ jobs:
         run: |
           echo "✅ Deployment completed successfully!"
           echo "🌐 Cloud Run URL: ${{ steps.run-url.outputs.url }}"
-          echo "📝 Function: ${{ env.FUNCTION_NAME }}"
-          echo "📝 Service: ${{ env.SERVICE_NAME }}"
-          echo "📝 Region: ${{ env.REGION }}"
