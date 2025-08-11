@@ -101,8 +101,11 @@ jobs:
             --region $REGION \
             --memory 1GB \
             --timeout 60s
-            
 
+      - name: Create .env.production from secret
+        run: |
+          echo "${{ secrets.ENV_PRODUCTION }}" > .env.production
+          
       - name: Build and Push Docker Image to GCR
         run: |
           gcloud builds submit --tag ${{ env.GCR_IMAGE_NAME }} .
